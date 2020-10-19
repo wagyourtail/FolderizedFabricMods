@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "modfolders",
+  "version": "${version}",
+
+  "name": "Folderized Fabric Mods",
+  "description": "Add version folders!",
+  "authors": [
+    "Wagyourtail"
+  ],
+  "contact": {
+    "homepage": "https://wagyourtail.xyz/",
+    "sources": "https://github.com/wagyourtail/FolderizedFabricMods"
+  },
+
+  "license": "MIT",
+  "icon": "assets/modid/icon.png",
+
+  "environment": "*",
+  "entrypoints": {
+    "mm:early_risers": [
+      "xyz.wagyourtail.modfolders.FolderMod"
+    ]
+  },
+  "mixins": [
+  ],
+  "depends": {
+    "fabricloader": "0.10.X"
+  }
+}
