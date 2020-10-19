@@ -201,7 +201,7 @@ public class FolderMod implements Runnable {
             .forEach(folder -> {
                 List<String> folderVersions = Arrays.stream(folder.getName().split(",")).map(String::toLowerCase).collect(Collectors.toList());
                 if (folderVersions.contains(mcVersion) || folderVersions.contains(xVersion)) {
-                    resolver.addCandidateFinder(new DirectoryModCandidateFinder(folder.toPath(), instance.isDevelopmentEnvironment()));
+                    resolver.addCandidateFinder(new DirectoryModCandidateFinder(folder.toPath()));
                 }
             });
     }
@@ -209,7 +209,7 @@ public class FolderMod implements Runnable {
     private void getNewMods() throws ModResolutionException {
         ModResolver resolver = new ModResolver();
         resolver.addCandidateFinder(new ClasspathModCandidateFinder());
-        resolver.addCandidateFinder(new DirectoryModCandidateFinder(modsDir, instance.isDevelopmentEnvironment()));
+        resolver.addCandidateFinder(new DirectoryModCandidateFinder(modsDir));
         addModDirectories(resolver);
         Map<String, ModCandidate> candidateMap = resolver.resolve((net.fabricmc.loader.FabricLoader)instance);
         String modText;
@@ -230,21 +230,11 @@ public class FolderMod implements Runnable {
             .map(info -> String.format("%s@%s", info.getInfo().getId(), info.getInfo().getVersion().getFriendlyString()))
             .collect(Collectors.joining(", ")));
 
-        boolean runtimeModRemapping = instance.isDevelopmentEnvironment();
+        Iterator var4 = candidateMap.values().iterator();
 
-        if (runtimeModRemapping && System.getProperty("fabric.remapClasspathFile") == null) {
-            LOGGER.warn("Runtime mod remapping disabled due to no fabric.remapClasspathFile being specified. You may need to update loom.");
-            runtimeModRemapping = false;
-        }
-
-        if (runtimeModRemapping) {
-            for (ModCandidate candidate : RuntimeModRemapper.remap(candidateMap.values(), ModResolver.getInMemoryFs())) {
-                addMod(candidate);
-            }
-        } else {
-            for (ModCandidate candidate : candidateMap.values()) {
-                addMod(candidate);
-            }
+        while(var4.hasNext()) {
+            ModCandidate candidate = (ModCandidate)var4.next();
+            this.addMod(candidate);
         }
     }
 
