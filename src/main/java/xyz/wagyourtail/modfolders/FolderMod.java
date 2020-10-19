@@ -167,7 +167,7 @@ public class FolderMod implements Runnable {
         Map<String, ModCandidate> candidateMap = resolver.resolve((net.fabricmc.loader.FabricLoader)instance);
         String modText;
 
-        switch (candidateMap.values().size() - 1) {
+        switch (candidateMap.values().size()) {
             case 0:
                 modText = "Loading %d mods";
                 break;
@@ -179,8 +179,8 @@ public class FolderMod implements Runnable {
                 break;
         }
 
-        LOGGER.info("[" + getClass().getSimpleName() + "] " + modText, candidateMap.values().size() - 1, candidateMap.values().stream()
-            .filter(info -> info.getInfo().getId() != "Minecraft").map(info -> String.format("%s@%s", info.getInfo().getId(), info.getInfo().getVersion().getFriendlyString()))
+        LOGGER.info("[" + getClass().getSimpleName() + "] " + modText, candidateMap.values().size(), candidateMap.values().stream()
+            .map(info -> String.format("%s@%s", info.getInfo().getId(), info.getInfo().getVersion().getFriendlyString()))
             .collect(Collectors.joining(", ")));
 
         boolean runtimeModRemapping = instance.isDevelopmentEnvironment();
