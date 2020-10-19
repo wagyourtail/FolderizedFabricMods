@@ -20,23 +20,23 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class FolderMod implements Runnable {
-    private Class<?> loader = net.fabricmc.loader.FabricLoader.class;
     private FabricLoader instance = FabricLoader.getInstance();
+    private Class<?> loader = net.fabricmc.loader.FabricLoader.class;
     private Logger LOGGER = ((net.fabricmc.loader.FabricLoader) instance).getLogger();
+    private EnvType environment = instance.getEnvironmentType();
+    private Set<String> modIds = new LinkedHashSet<>();
+    private Method adder = null;
     private Path modsDir;
     String mcVersion;
-    private Set<String> modIds = new LinkedHashSet<>();
-    private EnvType environment = instance.getEnvironmentType();
 
 
     // have to do this as an early riser in order to add the mixins "properly"
     @Override
     public void run() {
-        System.out.println("adding version folder to modlist.");
+        System.out.println("adding version folders to modlist.");
 
         modsDir = ((net.fabricmc.loader.FabricLoader)instance).getModsDir();
         mcVersion = ((net.fabricmc.loader.FabricLoader) instance).getGameProvider().getRawGameVersion();
-
 
         unfreezeFabricLoader();
 
@@ -99,6 +99,7 @@ public class FolderMod implements Runnable {
         }
     }
 
+    // have to copy setup mod logic to filter to just the new mods.
     private void setupMods() throws NoSuchFieldException, NoSuchMethodException, IllegalAccessException, ClassNotFoundException {
         Method setupRootPath = net.fabricmc.loader.ModContainer.class.getDeclaredMethod("setupRootPath");
         setupRootPath.setAccessible(true);
@@ -130,7 +131,7 @@ public class FolderMod implements Runnable {
                     }
                 }
             } catch (InvocationTargetException e) {
-                 new RuntimeException(String.format("Failed to setup mod %s (%s)", ((net.fabricmc.loader.ModContainer)mod).getInfo().getName(), ((net.fabricmc.loader.ModContainer)mod).getOriginUrl().getFile()), e).printStackTrace();
+                 throw new RuntimeException(String.format("Failed to setup mod %s (%s)", ((net.fabricmc.loader.ModContainer)mod).getInfo().getName(), ((net.fabricmc.loader.ModContainer)mod).getOriginUrl().getFile()), e.getTargetException());
             }
         }
     }
@@ -202,8 +203,6 @@ public class FolderMod implements Runnable {
         }
     }
 
-    private Method adder = null;
-
     private void addMod(ModCandidate candidate) {
         try {
             if (adder == null) {
@@ -212,6 +211,7 @@ public class FolderMod implements Runnable {
             }
             try {
                 adder.invoke(instance, candidate);
+                // if this doesn't throw, it means the mod is new and we can add it to the modIds list.
                 modIds.add(candidate.getInfo().getId());
             } catch (IllegalAccessException | InvocationTargetException e) {}
         } catch (NoSuchMethodException e) {
@@ -229,6 +229,8 @@ public class FolderMod implements Runnable {
         .forEach(Mixins::addConfiguration); //FabricMixinBootstrap::addConfiguration
     }
 
+
+    //traditional early risers are after this exits so it's fine.
     private void runEarlyRisers() {
         instance.getEntrypointContainers("mm:early_risers", Runnable.class).stream()
         .filter(container -> container.getProvider().getMetadata() instanceof LoaderModMetadata && modIds.contains(container.getProvider().getMetadata().getId()))
