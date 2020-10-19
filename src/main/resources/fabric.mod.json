@@ -25,6 +25,6 @@
   "mixins": [
   ],
   "depends": {
-    "fabricloader": "0.9.X"
+    "fabricloader": "0.8.X"
   }
 }

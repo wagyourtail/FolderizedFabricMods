@@ -65,7 +65,7 @@ public class FolderMod implements Runnable {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load config.", e);
         }
-        modsDir = ((net.fabricmc.loader.FabricLoader)instance).getModsDir();
+        modsDir = ((net.fabricmc.loader.FabricLoader)instance).getModsDirectory().toPath();
         mcVersion = ((net.fabricmc.loader.FabricLoader) instance).getGameProvider().getRawGameVersion();
         
         for (Map.Entry<String, Config.AutoUpdate[]> entry : config.updaters.entrySet()) {
