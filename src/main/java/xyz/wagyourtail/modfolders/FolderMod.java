@@ -5,6 +5,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.LanguageAdapter;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.discovery.*;
+import net.fabricmc.loader.gui.FabricGuiEntry;
 import net.fabricmc.loader.launch.common.FabricLauncherBase;
 import net.fabricmc.loader.metadata.EntrypointMetadata;
 import net.fabricmc.loader.metadata.LoaderModMetadata;
@@ -33,7 +34,7 @@ public class FolderMod implements Runnable {
     // have to do this as an early riser in order to add the mixins "properly"
     @Override
     public void run() {
-        System.out.println("adding version folders to modlist.");
+        LOGGER.info("[" + getClass().getSimpleName() + "] Adding version folders to modlist.");
 
         modsDir = ((net.fabricmc.loader.FabricLoader)instance).getModsDir();
         mcVersion = ((net.fabricmc.loader.FabricLoader) instance).getGameProvider().getRawGameVersion();
@@ -43,7 +44,7 @@ public class FolderMod implements Runnable {
         try {
             getNewMods();
         } catch (ModResolutionException e) {
-            e.printStackTrace();
+            FabricGuiEntry.displayCriticalError(e, true);
         }
 
         refreezeFabricLoader();
@@ -152,13 +153,14 @@ public class FolderMod implements Runnable {
             xVersion = mcVersion + ".x";
         }
 
-        Arrays.stream(modsDir.toFile().listFiles()).filter(e -> e.isDirectory())
-        .forEach(folder -> {
-            List<String> folderVersions = Arrays.stream(folder.getName().split(",")).map(e -> e.toLowerCase()).collect(Collectors.toList());
-            if (folderVersions.contains(mcVersion) || folderVersions.contains(xVersion)) {
-                resolver.addCandidateFinder(new DirectoryModCandidateFinder(folder.toPath(), instance.isDevelopmentEnvironment()));
-            }
-        });
+        Arrays.stream(modsDir.toFile().listFiles())
+            .filter(e -> e.isDirectory())
+            .forEach(folder -> {
+                List<String> folderVersions = Arrays.stream(folder.getName().split(",")).map(e -> e.toLowerCase()).collect(Collectors.toList());
+                if (folderVersions.contains(mcVersion) || folderVersions.contains(xVersion)) {
+                    resolver.addCandidateFinder(new DirectoryModCandidateFinder(folder.toPath(), instance.isDevelopmentEnvironment()));
+                }
+            });
     }
 
     private void getNewMods() throws ModResolutionException {
@@ -221,20 +223,20 @@ public class FolderMod implements Runnable {
 
     private void addMixins() {
         instance.getAllMods().stream()
-        .map(ModContainer::getMetadata)
-        .filter(m -> m instanceof LoaderModMetadata && modIds.contains(m.getId()))
-        .flatMap(m -> ((LoaderModMetadata) m).getMixinConfigs(environment).stream())
-        .filter(s -> s != null && !s.isEmpty())
-        .collect(Collectors.toSet())
-        .forEach(Mixins::addConfiguration); //FabricMixinBootstrap::addConfiguration
+            .map(ModContainer::getMetadata)
+            .filter(m -> m instanceof LoaderModMetadata && modIds.contains(m.getId()))
+            .flatMap(m -> ((LoaderModMetadata) m).getMixinConfigs(environment).stream())
+            .filter(s -> s != null && !s.isEmpty())
+            .collect(Collectors.toSet())
+            .forEach(Mixins::addConfiguration); //FabricMixinBootstrap::addConfiguration
     }
 
 
     //traditional early risers are after this exits so it's fine.
     private void runEarlyRisers() {
         instance.getEntrypointContainers("mm:early_risers", Runnable.class).stream()
-        .filter(container -> container.getProvider().getMetadata() instanceof LoaderModMetadata && modIds.contains(container.getProvider().getMetadata().getId()))
-        .collect(Collectors.toList())
-        .forEach((container) -> container.getEntrypoint().run());
+            .filter(container -> container.getProvider().getMetadata() instanceof LoaderModMetadata && modIds.contains(container.getProvider().getMetadata().getId()))
+            .collect(Collectors.toList())
+            .forEach((container) -> container.getEntrypoint().run());
     }
 }
