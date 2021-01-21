@@ -12,5 +12,5 @@ make sure to update the fabric-loader on your older minecraft versions to match.
 
 Mod versions will specify which versions of the fabric loader they will work with before their own version number.
 
-For example, the main branch currently works on Fabric Loader `0.10.X`, so the mod's filename will be `modfolders-0.10.X-version.jar`
+For example, the main branch currently works on Fabric Loader `0.10.6` through `0.11.1`, so the mod's filename will be `modfolders-0.10.6-0.11.1-version.jar`
 where version is the actual version number.
