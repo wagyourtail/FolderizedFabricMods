@@ -92,7 +92,7 @@ public class FolderMod implements Runnable {
 
         refreezeFabricLoader();
 
-        ((net.fabricmc.loader.FabricLoader) instance).loadAccessWideners();
+        ((net.fabricmc.loader.FabricLoader) instance).getAccessWidener().loadFromMods();
         addMixins();
         runEarlyRisers();
     }
