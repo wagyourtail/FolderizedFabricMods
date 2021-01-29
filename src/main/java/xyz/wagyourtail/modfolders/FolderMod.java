@@ -1,5 +1,7 @@
 package xyz.wagyourtail.modfolders;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.LanguageAdapter;
@@ -13,31 +15,72 @@ import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.Mixins;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class FolderMod implements Runnable {
-    private FabricLoader instance = FabricLoader.getInstance();
-    private Class<?> loader = net.fabricmc.loader.FabricLoader.class;
-    private Logger LOGGER = ((net.fabricmc.loader.FabricLoader) instance).getLogger();
-    private EnvType environment = instance.getEnvironmentType();
-    private Set<String> modIds = new LinkedHashSet<>();
-    private Method adder = null;
-    private Path modsDir;
-    String mcVersion;
+    public static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private static final FabricLoader instance = FabricLoader.getInstance();
+    private static final  Class<?> loader = net.fabricmc.loader.FabricLoader.class;
+    public static final Logger LOGGER = ((net.fabricmc.loader.FabricLoader) instance).getLogger();
+    private static final EnvType environment = instance.getEnvironmentType();
+    private static final Set<String> modIds = new LinkedHashSet<>();
+    private static Method adder = null;
+    private static Path modsDir;
+    private static String mcVersion;
+    public static Config config;
+    
+    public static File configFile;
 
 
     // have to do this as an early riser in order to add the mixins "properly"
     @Override
     public void run() {
         LOGGER.info("[" + getClass().getSimpleName() + "] Adding version folders to modlist.");
-
+        
+        try {
+            File configDir = instance.getConfigDir().toFile();
+            configFile = new File(configDir, "folderizedfabricmods.json");
+            if (!configDir.exists()) {
+                configDir.mkdirs();
+            }
+            if (!configFile.exists()) {
+                FolderMod.config = new Config();
+                try (FileWriter writer = new FileWriter(configFile)) {
+                    writer.write(gson.toJson(FolderMod.config));
+                }
+            } else {
+                try (FileReader reader = new FileReader(configFile)) {
+                    FolderMod.config = gson.fromJson(reader, Config.class);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load config.", e);
+        }
         modsDir = ((net.fabricmc.loader.FabricLoader)instance).getModsDir();
         mcVersion = ((net.fabricmc.loader.FabricLoader) instance).getGameProvider().getRawGameVersion();
+        
+        for (Map.Entry<String, Config.AutoUpdate[]> entry : config.updaters.entrySet()) {
+            File folder = new File(modsDir.toFile(), entry.getKey());
+            for (Config.AutoUpdate update : entry.getValue()) {
+                ModUpdater updater = null;
+                try {
+                    updater = ModUpdater.getUpdater(folder, update);
+                    updater.updateMod();
+                } catch (IOException | URISyntaxException | InterruptedException | NullPointerException e) {
+                    if (updater != null) updater.failed(e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
 
         unfreezeFabricLoader();
 
@@ -154,9 +197,9 @@ public class FolderMod implements Runnable {
         }
 
         Arrays.stream(modsDir.toFile().listFiles())
-            .filter(e -> e.isDirectory())
+            .filter(File::isDirectory)
             .forEach(folder -> {
-                List<String> folderVersions = Arrays.stream(folder.getName().split(",")).map(e -> e.toLowerCase()).collect(Collectors.toList());
+                List<String> folderVersions = Arrays.stream(folder.getName().split(",")).map(String::toLowerCase).collect(Collectors.toList());
                 if (folderVersions.contains(mcVersion) || folderVersions.contains(xVersion)) {
                     resolver.addCandidateFinder(new DirectoryModCandidateFinder(folder.toPath(), instance.isDevelopmentEnvironment()));
                 }
@@ -215,7 +258,7 @@ public class FolderMod implements Runnable {
                 adder.invoke(instance, candidate);
                 // if this doesn't throw, it means the mod is new and we can add it to the modIds list.
                 modIds.add(candidate.getInfo().getId());
-            } catch (IllegalAccessException | InvocationTargetException e) {}
+            } catch (IllegalAccessException | InvocationTargetException ignored) {}
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
         }
