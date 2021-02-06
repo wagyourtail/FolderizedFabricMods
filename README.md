@@ -1,4 +1,5 @@
 # Folderized Fabric Mods
+[![forthebadge](https://forthebadge.com/images/badges/powered-by-black-magic.svg)](https://forthebadge.com)
 
 This mod allows for loading other mods for a folder stucture in the mods folder.
 
